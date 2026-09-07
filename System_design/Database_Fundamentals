@@ -1,0 +1,132 @@
+ACID Transactions
+
+1. What is a Transaction?
+	A transaction is a group of database operations that should succeed or fail as one unit.
+2. ACID
+	| Property            | Meaning                                          | Protects Against       |
+	| ------------------- | ------------------------------------------------ | ---------------------- |
+	| **A - Atomicity**   | All or nothing                                   | Partial updates        |
+	| **C - Consistency** | Data remains valid                               | Invalid database state |
+	| **I - Isolation**   | Concurrent transactions don't interfere unsafely | Race conditions        |
+	| **D - Durability**  | Committed data survives failures                 | Data loss after crash  |
+
+3. Atomicity
+	All operations succeed, or none do.
+	The database uses mechanisms such as logs, undo/redo information, row versions, locks, or conflict detection to avoid leaving half-completed transactions.
+	
+4. Consistency
+	After a transaction commits, the database must still satisfy its defined rules.
+	e.g - primary key must be unique
+	ACID consistency does NOT mean every business rule is automatically handled.
+	
+5. Isolation
+	Isolation controls what happens when multiple transactions run concurrently.
+	Isolation mechanisms prevent unsafe interactions between concurrent transactions.
+	Common concurrency problems - 
+		| Problem                 | Meaning                                              |
+		| ----------------------- | ---------------------------------------------------- |
+		| **Dirty Read**          | Read uncommitted data                                |
+		| **Non-repeatable Read** | Same row gives different values during a transaction |
+		| **Phantom Read**        | Same query returns a different set of rows           |
+		| **Lost Update**         | One update overwrites another                        |
+		| **Write Skew**          | Concurrent writes together violate a business rule   |
+
+6. Isolation Levels
+	From weaker to stronger:
+		Read Uncommitted -> Read Committed -> Repeatable read -> Serializeable
+		| Level                | Idea                                         | Tradeoff                          |
+		| -------------------- | -------------------------------------------- | --------------------------------- |
+		| **Read Uncommitted** | Very weak isolation                          | Fast, can see uncommitted data    |
+		| **Read Committed**   | No dirty reads                               | Some concurrency anomalies remain |
+		| **Repeatable Read**  | Stronger repeat reads                        | More contention                   |
+		| **Serializable**     | Behaves as if transactions run one at a time | More blocking/conflicts/retries   |
+
+7. How Isolation Is Implemented
+	By Locks, MVCC(multi version concurrency control), Range Locks, Conflict Detection.
+	
+8. Durability
+	Once a transaction is committed, the database should be able to recover it after a failure within its configured durability guarantees.
+	Write-Ahead Logging (WAL) - Write recover information to WAL so when server crashes it can read from WAL and replay changes.
+	
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+SQL vs NoSQL
+
+1. Core Difference
+	SQL/Relational DB
+		Data stored in tables, rows, columns
+		Relationships through primary/foreign keys
+		Uses SQL
+		Strong schema and transaction support
+		Good for complex relationships and changing query requirements
+	NoSQL
+		Umbrella term, not one database type
+		Includes key-value, document, wide-column, graph, time-series, search, etc.
+		Often designed around specific access patterns
+		Usually easier to distribute horizontally for suitable workloads
+		
+2. SQL vs NoSQL
+	| Feature       | SQL                            | NoSQL                            |
+	| ------------- | ------------------------------ | -------------------------------- |
+	| Data model    | Tables                         | Key-value/document/etc.          |
+	| Schema        | Explicit/enforced              | Usually more flexible            |
+	| Relationships | Joins + foreign keys           | Embed/duplicate/traverse         |
+	| Transactions  | Strong general-purpose support | Varies by database               |
+	| Queries       | Flexible                       | Often access-pattern driven      |
+	| Scaling       | Vertical + replicas + sharding | Often horizontal-first           |
+	| Best for      | Relational/transactional data  | High-scale/specialized workloads |
+
+
+3. SQL Data Model
+	Tables 
+	Good when you need:
+		Joins
+		Foreign keys
+		Constraints
+		Multiple query patterns
+		Strong transactional guarantees
+		
+4. NoSQL Models
+	| Type            | Good For                              |
+	| --------------- | ------------------------------------- |
+	| **Key-Value**   | Sessions, caches, counters            |
+	| **Document**    | Profiles, catalogs, content           |
+	| **Wide-Column** | Huge write volumes, grouped lookups   |
+	| **Graph**       | Relationships, recommendations, fraud |
+	| **Time-Series** | Metrics, telemetry, IoT               |
+	| **Search**      | Text search, filtering, ranking       |
+
+5. Schema
+	The statement "SQL has schema, NoSQL has no schema" is misleading.
+	in sql - database enforces the structure
+	nosql - Records may have different fields: But the application still expects some schema. It may simply be enforced through application code, validation, API contracts, or document versions instead of entirely by the database.
+	
+6. Query Patterns
+	sql - Good when you don't know every future query. You can query relationships using joins.
+	NoSQL - Good when access patterns are known beforehand. You design the data around how it will be read.
+	
+7. Transactions & Consistency
+	SQL is usually the safer default when multiple records must change atomically.
+	e.g - banck transfer, A-=300 , B+=300
+	Both operations need to succeed together.
+	NoSQL transaction support varies by database:
+		Some provide atomic operations on one key
+		Some support transactions across multiple documents
+		Some provide conditional writes
+		Distributed databases may have limitations across partitions
+	So don't simply ask: "Does NoSQL support transactions?"
+	Ask: "What exactly can the transaction guarantee?"
+
+8. Scaling
+	SQL   → vertical scaling
+	NoSQL → horizontal scaling
+	SQL can scale using:
+		Bigger machines
+		Read replicas
+		Partitioning
+		Sharding
+		Connection pooling
+		Caching
+		Distributed SQL
+		
+	NoSQL can make horizontal scaling easier for workloads designed around partition keys, but it isn't magic. Bad partition keys, hot keys, huge documents, and cross-partition queries can still ruin your afternoon.
