@@ -130,3 +130,172 @@ SQL vs NoSQL
 		Distributed SQL
 		
 	NoSQL can make horizontal scaling easier for workloads designed around partition keys, but it isn't magic. Bad partition keys, hot keys, huge documents, and cross-partition queries can still ruin your afternoon.
+	
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Database Indexing - 
+	
+1. What is an Index?
+	An index is an additional data structure that helps a database find rows without scanning the entire table.
+	without index - 100 mil rows - 100mil searches.
+	with index - Query -> index -> Find matching row -> Fetch row.
+	Indexes make reads fast but consume storage and make other requests expensive.
+
+2. Selectivity
+	Selectivity = how much a condition narrows down the rows.
+	| Column       | Example          | Selectivity | Index usefulness   |
+	| ------------ | ---------------- | ----------: | ------------------ |
+	| `email`      | Unique           |        High | Excellent          |
+	| `user_id`    | Many orders/user | Medium-High | Good               |
+	| `status`     | ACTIVE/INACTIVE  |         Low | Sometimes          |
+	| `is_deleted` | true/false       |    Very Low | Usually weak alone |
+
+3. B-Tree Index
+	B-Tree/B+ Tree is the default index structure for many relational databases.
+	It keeps values sorted, making it useful for: where email = ?, where age>30, where created_at between ? and ?, order by created_at
+	It works well because the tree stays relatively shallow even with millions of rows, reducing the number of pages the database needs to inspect.
+	
+4. Composite Index
+	A composite index contains multiple columns.
+	e.g - INDEX(user_id, created_at), useful for - WHERE user_id = 123 ORDER BY created_at DESC
+	good starting rule for B-tree indexes: Equality filters, Range filters, Ordering columns.
+	
+5. Covering Index
+	A covering index contains all columns needed by a query.
+	covering index -> Faster reads + Less table access - Larger index  - More storage - More write overhead
+	
+6. Unique & Primary Key Indexes
+	A primary key usually creates a unique index automatically.
+
+7. Clustered Index
+	A clustered index affects how table data is physically organized, depending on the database.
+	Examples:
+		SQL Server: clustered index is the table's storage structure.
+		MySQL InnoDB: table is clustered by primary key.
+		PostgreSQL's CLUSTER rewrites a table according to an index, but later writes can cause the physical ordering to drift.
+	Why useful? 
+		Rows that are close together can be physically close, making range scans faster.
+		But random keys can cause writes to become more scattered.
+
+8. Specialized Indexes
+	Different query patterns need different indexes.
+	| Index                | Best for                                |
+	| -------------------- | --------------------------------------- |
+	| **B-Tree**           | Equality, ranges, sorting               |
+	| **Hash**             | Equality lookups                        |
+	| **Bitmap**           | Analytics, low-cardinality columns      |
+	| **Partial/Filtered** | Subset of rows                          |
+	| **Expression**       | Queries involving expressions/functions |
+	| **Full-text**        | Text search                             |
+	| **Spatial**          | Location queries                        |
+	| **Inverted**         | Documents, JSON, tags                   |
+	| **BRIN**             | Huge naturally ordered tables           |
+
+
+9. Partial Index
+	A partial index contains only rows matching a condition.
+	e.g - All orders - completed, canceled, open -index only these.
+	
+10. Expression Index
+	Useful when queries search using an expression.
+	e.g - WHERE LOWER(email) = 'alice@example.com'
+	
+11. Cost of indexes 
+	| Cost                    | Why                                      |
+	| ----------------------- | ---------------------------------------- |
+	| **Storage**             | Index occupies disk                      |
+	| **Write overhead**      | Inserts/updates/deletes modify indexes   |
+	| **Memory**              | Index pages compete for cache            |
+	| **Migration cost**      | Creating large indexes can be expensive  |
+	| **Planning complexity** | More indexes give optimizer more choices |
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Database Sharding 
+
+1. What is Sharding?
+	splitting rows of a database across multiple machines.
+
+2. Why Shard?
+	Usually when a single primary DB becomes the bottleneck for:
+		Storage → data no longer fits comfortably
+		Writes → one primary can't handle write volume
+		Hot data → frequently accessed data doesn't fit in memory
+		Large tenants → one customer overwhelms others
+		Regional requirements → data needs to live near users or in specific regions
+	
+	Sharding is usually a solution for write/storage/scale bottlenecks, not the first solution for reads.
+	
+3. Shard Key
+	The shard key determines where a row lives.
+	possible shard key - user_id, tenant_id, order_id, region
+	Choosing the shard key is arguably the most important sharding decision because it determines:
+		Data distribution
+		Traffic distribution
+		Query routing
+		Cross-shard operations
+		Future scalability
+		
+4. Good Shard Key
+	Distribute data evenly, Distribute traffic evenly, keep related data together when possible.
+	
+5. Bad Shard Keys
+	e.g - created_at.
+	This creates a hot shard while older shards sit mostly idle.
+	Low-cardinality fields - country, status, plan_type
+	
+	Good shard key = balanced + frequently queried + scalable.
+	
+6. Sharding Strategies
+	1. Hash based sharding
+		it usually distributes data evenly and good for avoiding hot ranges
+		But range queries are harder and re balancing can be painful 
+	2. Range based sharding
+		divide keys into ranges, shard key(user_id) shard 1 = 1-10 m users, shard 2 = 10-20 m users.
+		it's simple and easy to understand and good for range queries
+		But can create hot ranges and sequential/time-based IDs can overload the newest shard.
+	3. Directory based sharding
+		The directory tells the router where to send the request.
+		by this you can move a tenant independently
+		But the directory becomes the critical infrastructure and must itself be highly available and carefully updated.
+	4. Geo based sharding
+		Data is divided into regions.
+		it's useful for lower latency.
+		But global queries and users moving between regions become more complicated.
+		
+7. Cross-Shard Queries
+	Design common queries so they hit one shard
+	For genuinely global queries, use separate read models, search indexes, or analytics systems rather than querying every shard on every request.
+	
+8. Sharding + Joins
+	Joins are easy when related data is on the same shard.
+	Keep data that is commonly queried or joined together on the same shard.
+	
+9. Transactions Across Shards
+	it introduce more latency, more failure cases, more operational complexity
+	Therefore, Try to keep important transactions within one shard.
+	
+10. Rebalancing / Resharding
+	Shards won't remain perfectly balanced forever.
+	You need to move data between shards.
+	This is difficult because the system must remain correct while data is being moved.
+	Techniques - virtual shards/buckets, Consistent hashing, Directory-based mapping, Splitting hot ranges.
+	
+11. Hot Shards
+	A hot shard receives disproportionately high traffic or data.
+	cause - large tenant, Bad shard key, uneven regional traffic.
+	The entire system can become limited by that one shard.
+	solutions - Move large tenants to dedicated shards, Split extremely hot entities, add caching.
+	
+12. Sharding Tradeoffs
+	| Benefit                  | Cost                     |
+	| ------------------------ | ------------------------ |
+	| Scales storage           | Complex routing          |
+	| Scales writes            | Cross-shard queries      |
+	| Distributes load         | Cross-shard joins        |
+	| Tenant isolation         | Distributed transactions |
+	| Regional placement       | Rebalancing              |
+	| Smaller per-node dataset | Operational complexity   |
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
