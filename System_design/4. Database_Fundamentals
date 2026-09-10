@@ -299,3 +299,186 @@ Database Sharding
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+Database Replication
+
+1. What is Data Replication?
+	keeping copies of the same data in multiple locations and synchronizing changes between them.
+	Why? High availability, Disaster recovery, Read scalablity, Lower latency.
+	
+2. Replication vs Backup
+	| Replication                       | Backup                       |
+	| --------------------------------- | ---------------------------- |
+	| Continuous/current copies         | Point-in-time snapshot       |
+	| Used for availability/failover    | Used for recovery            |
+	| Replica can take over quickly     | Restore takes time           |
+	| May replicate corruption/deletion | Can restore older good state |
+	
+3. How Replication Works
+	Initial snapshot -> Capture changes -> Send changes -> Apply changes to replica
+	Changes can be captured using - Transaction logs, Database triggers, CDC (Change Data Capture)
+	CDC - it reads database change logs and captures INSERT UPDATE DELETE.
+	It is commonly used because it can capture changes with relatively low impact on the primary and preserve transaction order.
+	
+4. Synchronous Replication
+	The primary waits for the replica to confirm the write.
+	it has strong consistency between primary and replica and lower chances of losing recently committed data.
+	But it has higher latency and dependent on replica/network availability
+	
+5. Asynchronous Replication
+	Primary acknowledges the write without waiting for replicas.
+	it has lower write latency and better for geographically distant replicas.
+	But there can be replication lags. like some changes on primary and if primary fails during this lag, some recently written data may not yet exist on the replica.
+	
+6. Replication Lag
+	difference between the primary's latest state and a replica's state.
+	This creates the classic problem, write -> primary and read from replica, Result may be stale.
+	
+7. Transactional Replication
+	Changes are replicated in transaction order.
+	usually take an initial snapshot, send subsequent changes, replica applies them incrementally.
+	
+8. Snapshot Replication
+	Copies the database state at a particular point in time.
+	
+9. Merge Replication
+	Multiple nodes can independently accept changes. Useful when nodes need to operate independently, including offline scenarios.
+	Problem - two nodes may modify the same data.
+	
+10. Key-Based Replication
+	Uses a replication key such as: updated_at, incrementing_id
+	Only records changed since the previous replication are copied.
+	it's efficient and puts relatively little load  on the source.
+	Problem - Deletes can be missed, because the deleted row no longer exists to be discovered through the key.
+	
+11. Full vs Partial Replication
+	Full - Every replica contains the entire dataset. simple reads, complete copy but more storage, bandwidth and replication cost.
+	Partial - Replica contains only a subset. Less storage and bandwidth but more complicated routing and queries.
+	
+12. Benefits of Replication
+	High Availability, Read Scaling, Lower Latency.
+	
+13. RPO vs RTO
+	RPO - Recovery Point Objective, How much data can we afford to lose?
+	RTO - Recovery Time Objective, How long can the system be unavailable?
+	
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Database Scaling
+
+1. Vertical Scaling
+	Add more resources to the same database server.
+
+2. Indexing
+	Indexes allow the database to find rows without scanning the entire table.
+	
+3. Sharding
+	Split data across multiple database servers.
+	
+4. Vertical Partitioning
+	Split a large table by columns.
+	
+5. Caching
+	Store frequently accessed data in a faster storage layer.
+	
+6. Replication
+	Create multiple copies of the database.
+	
+7. Materialized Views
+	For expensive queries, pre-compute and store the result.
+	
+8. Denormalization
+	Intentionally duplicate data to make reads faster.
+	
+9. Quick comparison 
+	| Technique                 | What it does               | Mainly helps              |
+	| ------------------------- | -------------------------- | ------------------------- |
+	| **Vertical Scaling**      | Bigger machine             | CPU/RAM/storage           |
+	| **Indexing**              | Faster lookup              | Reads                     |
+	| **Caching**               | Store hot data             | Reads/latency             |
+	| **Replication**           | Copy data                  | Reads/availability        |
+	| **Vertical Partitioning** | Split columns              | Query efficiency          |
+	| **Materialized Views**    | Precompute results         | Complex reads             |
+	| **Denormalization**       | Duplicate data             | Read-heavy queries        |
+	| **Sharding**              | Split rows across machines | Huge scale/writes/storage |
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Database types
+
+1. Relational Database (RDBMS)
+	Data is stored in tables with rows and columns, with relationships through keys.
+	Good for - structed data, Relationships and joins, ACID transactions, Financial systems, Enterprise applications.
+	
+2. Key-Value Database
+	store data as "user:123" -> {name : "Alice"}
+	Good for - Caching, Sessions, Shopping carts
+	e.g - Redis, DynamoDB.
+	
+3. Document Database
+	Stores semi-structured documents, usually JSON/BSON.
+	good for - flexible schemas, Product catalogs, CMS
+	e.g - mongodb, CouchBase.
+	
+4. Graph Database
+	stores node + edge + Properties
+	Good for - social networks, Recommendation systems.
+	e.g - amazon neptune.
+	
+5. Wide-Column Database
+	Data is distributed across many machines and organized around flexible columns.
+	good for - Huge datasets, High write throughput, Real time analytics.
+	e.g - Cassandra.
+	
+6. In-Memory Database
+	Stores data primarily in RAM instead of relying on disk for every access.
+	good for - caching, Gaming state, Real time applications.
+	e.g - redis, memcached.
+	
+7. Time-Series Database
+	Designed for time-stamped data.
+	good for - monitoring, metrics, IOT.
+	e.g - InfluxDB, TimescaleDB.
+
+8. Object-Oriented Database
+	Stores data as objects, similar to how applications using OOP languages represent data.
+	Good for - Complex object models, OOP-heavy applications.
+	e.g - ObjectDB.
+	
+9. Text Search Database
+	Optimized for searching large amounts of text.
+	support things like - Full-text search, Ranking, Filtering.
+	Good for - Product search, Log search.
+	e.g - Elastic Search.
+	
+10. Spatial Database
+	Designed for geographical and geometric data.
+	Good for - Maps, Nearby searches, Route planning.
+	e.g - Oracle Spatial.
+	
+11. Blob / Object Datastore
+	Stores large unstructured objects: images, videos, audio, pdfs.
+	good for - media storage, backups.
+	e.g - Amazon s3.
+
+12. Ledger Database
+	Designed for immutable, append-only records.
+	Useful when you need a verifiable history of changes.
+	Good for - Financial records, Supply chains, Audit trails.
+	e.g - Amazon QLDB.
+	
+13. Hierarchical Database
+	Stores data as a tree.
+	Each record has one parent and potentially many children.
+	good for - Hierarchial structures, File systems
+	e.g - IBM IMS
+	
+14. Vector Database
+	Stores high-dimensional vectors, usually embeddings.
+	Used for similarity / nearest-neighbor search.
+	good for - AI/ML applications, Semantic search, Recommendation systems.
+	e.g - Pinecone, FAISS
+	
+15. Embedded Database
+	Runs inside the application process instead of as a separate database server.
+	good for - Desktop applications, Mobile/edge applications, Games.
+	e.g - SQLite, RocksDB.
