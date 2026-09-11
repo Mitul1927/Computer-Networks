@@ -482,3 +482,81 @@ Database types
 	Runs inside the application process instead of as a separate database server.
 	good for - Desktop applications, Mobile/edge applications, Games.
 	e.g - SQLite, RocksDB.
+	
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Bloom filters
+	
+1. What is a Bloom Filter?
+	A Bloom Filter is a space-efficient probabilistic data structure used to check whether an item might exist in a set.
+	It only gives two possible answers: Item? No -> definitely not present, YES -> Probably present.
+	
+2. How It Works
+	A Bloom Filter contains:
+		Bit array of size m
+		k hash functions
+	Initially the array is all 0's, adding an item, suppose: an apple, hash it k times, hash1 -> 2 , hash2 -> 5, hash3 -> 8. set these positions to 1
+	arr - 0 0 1 0 0 1 0 0 1 0 0.
+	checking an item
+		any bit = 0 , definitely not present
+		all bits = 1, probably present.
+		
+3. Why False Positives Happen
+	suppose we hash banana and the bits numbers we get are already 1 by some other additions, then we get the yes but it's not present there.
+	Bloom Filter can say "maybe" when the answer is actually "no", but it cannot say "no" for an item that was correctly inserted.
+	
+4. Why Use It?
+	The main purpose is to avoid an expensive lookup when the answer is definitely "no."
+	This can save - disk reads, database queries, Cache lookups, Network calls.
+	
+5. Example: URL Deduplication
+	A web crawler may encounter millions/billions of URLs.
+	Instead of storing every URL in a large exact set: Crawler -> Bloom filter -> "Have i seen this url?"
+	if no -> definitely haven't seen it , yes -> maybe seen it
+	
+6. Sizing
+	Four important variables:
+		| Variable | Meaning                     |
+		| -------- | --------------------------- |
+		| `n`      | Expected number of items    |
+		| `p`      | Desired false-positive rate |
+		| `m`      | Number of bits              |
+		| `k`      | Number of hash functions    |
+
+	Typical approximate values from the article:
+		| False-positive rate | Bits/item | Hash functions |
+		| ------------------: | --------: | -------------: |
+		|                 10% |      ~4.8 |             ~3 |
+		|                  1% |      ~9.6 |             ~7 |
+		|                0.1% |     ~14.4 |            ~10 |
+		|               0.01% |     ~19.2 |            ~13 |
+
+	Lower false positive rate -> more memory required.
+	
+7. Main Limitation: Deletion
+	A standard Bloom Filter cannot safely delete an individual item. because many bits are overlapping.
+	solution - Use a Counting Bloom Filter, which stores counters instead of individual bits.
+	like - 0 1 0 1     then 0 2 1 1
+	Counters can be incremented/decremented, allowing deletion. The tradeoff is more memory.
+	
+8. Production Use Cases
+	LSM-tree databases
+		Systems such as Cassandra and RocksDB use Bloom Filters to determine which SSTables definitely don't contain a requested key.
+		This is especially useful for missing-key lookups.
+	Caches
+	Web Crawlers
+		Used to reduce duplicate URL processing.
+
+9. Important Variants
+	Counting Bloom Filter
+		Supports deletion
+		Uses counters instead of bits
+		More memory
+	Scalable Bloom Filter
+		Adds new sub-filters as the dataset grows
+		Avoids a fixed capacity limit
+		Lookups may need to check multiple filters
+	Cuckoo Filter
+		Stores fingerprints rather than shared bits
+		Supports deletion
+		Can be preferable when deletions are common
